@@ -1,0 +1,547 @@
+from tkinter import *
+import pymysql
+from tkinter import ttk
+from tkinter import messagebox,filedialog
+from datetime import datetime
+taz=Tk()
+h=taz.winfo_screenheight()#set screen hight and width about all laptop size
+w=taz.winfo_screenwidth() #set screen width
+taz.geometry("%dx%d+0+0"%(w,h))
+taz.title("TAJ HOTEL MANAGEMENT SYSTEM")
+
+# ========mainTreeView======================
+tazTV = ttk.Treeview(height=10, columns=('Item Name''Rate','Type'))
+tazTV1 = ttk.Treeview(height=10, columns=('Date''Name','Type','Rate','Total'))
+
+############# validation ######################
+def only_numeric_input(P):
+    # checks if entry's value is an integer or empty and returns an appropriate boolean
+    if P.isdigit() or P == "":  # if a digit was entered or nothing was entered
+        return True
+    return False
+
+def only_char_input(P):
+    # checks if entry's value is an integer or empty and returns an appropriate boolean
+    if P.isalpha() or P == "":  # if a digit was entered or nothing was entered
+        return True
+    return False
+
+callback = taz.register(only_char_input)  # registers a Tcl to Python callback
+callback1 = taz.register(only_numeric_input)  # registers a Tcl to Python callback
+
+############### database connectivity #################
+def db_connect():
+    global mycursor,con
+    con=pymysql.connect(host='localhost',user='root',db='mpvit')
+    print("Connection mil gaya")
+    mycursor=con.cursor()
+
+############### remove all widgets #################
+def remove_all_widgets():
+    global taz
+    for widget in taz.winfo_children():
+        widget.grid_remove()
+
+
+def OnDoubleClick(event):
+    #print("hi")
+    item = tazTV.selection()
+    itemNameVar1 = tazTV.item(item,"text")
+    item_detail = tazTV.item(item,"values")
+    print(itemNameVar1,item_detail)
+    itemnameVar.set(itemNameVar1)
+    itemrateVar.set(item_detail[0])
+    itemTypeVar.set(item_detail[1])
+######### getIteminTreeView ###########
+def getIteminTreeView():
+    # to delete already inserted item
+    records = tazTV.get_children()
+
+    for element in records:
+        tazTV.delete(element)
+
+    # insert data in treeview
+    conn = pymysql.connect(host="localhost", user="root", db="mpvit")
+    mycursor = conn.cursor(pymysql.cursors.DictCursor)
+    query = "select * from itemlist"
+    mycursor.execute(query)
+    data = mycursor.fetchall()
+    #print(data)
+    for row in data:
+        tazTV.insert('', 'end', text=row['item_name'], values=(row["item_rate"],
+                                                               row["item_type"]))
+    conn.close()
+
+ #################### ADD ITEM BACK BUTTON INSERT ITEM ###################
+
+def insertItem():
+    item_name = itemnameVar.get()
+    item_rate = itemrateVar.get()
+    item_type = itemTypeVar.get()
+    if item_name == '' or item_rate == '' or item_type == '':
+        messagebox.showerror(title='Item Insert Error',
+                             message='Please Fill all Details')
+    else:
+        db_connect()
+        query = "insert into itemlist (item_name,item_rate,item_type) values(%s,%s,%s)"
+        val = (item_name, item_rate, item_type)
+        mycursor.execute(query, val)
+        con.commit()
+        messagebox.showinfo("Save Data", 'Item Inserted Successfully')
+        itemnameVar.set("")
+        itemrateVar.set("")
+        itemTypeVar.set("")
+        getIteminTreeView()
+
+
+def updateItem():
+        item_name = itemnameVar.get()
+        item_rate = itemrateVar.get()
+        item_type = itemTypeVar.get()
+        if item_name == '' or item_rate == '' or item_type == '':
+            messagebox.showerror(title='Item Insert Error',
+                                 message='Please Fill all Details')
+        else:
+            db_connect()
+            query = "update itemlist set item_rate=%s,item_type=%s where item_name=%s"
+            val = (item_rate, item_type, item_name)
+            mycursor.execute(query, val)
+            con.commit()
+            messagebox.showinfo("Save Data", 'Item Inserted Successfully')
+            itemnameVar.set("")
+            itemrateVar.set("")
+            itemTypeVar.set("")
+            getIteminTreeView()
+
+
+def deleteItem():
+    item_name = itemnameVar.get()
+    item_rate = itemrateVar.get()
+    item_type = itemTypeVar.get()
+    if item_name == '' or item_rate == '' or item_type == '':
+        messagebox.showerror(title='Item Insert Error',
+                             message='Please Fill all Details')
+    else:
+        db_connect()
+        query = "delete from itemlist where item_name=%s"
+        val = (item_name)
+        mycursor.execute(query, val)
+        con.commit()
+        messagebox.showinfo("Save Data", 'Item Inserted Successfully')
+        itemnameVar.set("")
+        itemrateVar.set("")
+        itemTypeVar.set("")
+        getIteminTreeView()
+
+
+
+#################### ADD ITEM BACK BUTTON###################
+def back():
+    welcomewindow()
+##################### billwindow #######################
+global X
+X=datetime.now()
+datetimeVar=StringVar()
+datetimeVar.set(X)
+customernameVar=StringVar()
+customermobileVar=StringVar()
+combovariable=StringVar()
+baserate=StringVar()
+cost=StringVar()
+qtyvariable=StringVar()
+
+
+########################  combo data  ###########################
+def combo_input():
+    db_connect()
+    mycursor.execute('select item_name from itemlist')
+    data=[]
+    for row in mycursor.fetchall():
+        data.append(row[0])
+    return data
+
+####################  optioncallback  ###################
+def optioncallback(*args):
+    global itemname
+    itemname=combovariable.get()
+    #print(itemname)
+    aa=ratelist()
+    print(aa)
+    baserate.set(aa)
+    global v
+    for i in aa:
+        for j in i:
+            v=j
+
+
+#################### optioncallback2 #####################
+def optioncallback2(*args):
+    global qty
+    qty=qtyvariable.get()
+    final=int(v)*int(qty)
+    cost.set(final)
+
+#################  rate list ########################
+def ratelist():
+    db_connect()
+    que2="select item_rate from itemlist where item_name=%s"
+    val=(itemname)
+    mycursor.execute(que2,val)
+    data=mycursor.fetchall()
+    print(data)
+    return data
+def billwindow():
+    remove_all_widgets()
+    mainHeading()
+
+    billitem = Label(taz, text="Generate Bill", font="Arial 20")
+    billitem.grid(row=1, column=1, padx=(50, 0), columnspan=2, pady=10)
+
+    btnback = Button(taz, text="Back", font="Arial 15", bg="powder blue", fg="black", bd=10, command=back)
+    btnback.grid(row=1, column=0, padx=20, pady=5, columnspan=2)
+
+    btnLogout = Button(taz, text="Logout", font="Arial 15", bg="powder blue", fg="black", bd=10, command=adminLogout)
+    btnLogout.grid(row=1, column=2, padx=20, pady=5, columnspan=2)
+
+    dateTimeLabel=Label(taz,text="Date & Time:",font=("Arial", 15,"bold"))
+    dateTimeLabel.grid(row=3,column=1, padx=20, pady=5)
+
+    dateTimeEntry=Entry(taz,textvariable=datetimeVar,bd=12 )
+    dateTimeEntry.grid(row=3, column=2, padx=20, pady=5)
+
+    customernameLabel = Label(taz, text="Customer Name:", font=("Arial", 15, "bold"))
+    customernameLabel.grid(row=4, column=1, padx=20, pady=5)
+
+    customernameEntry = Entry(taz, textvariable=customernameVar, bd=12)
+    customernameEntry.grid(row=4, column=2, padx=20, pady=5)
+    customernameEntry.configure(validate="key", validatecommand=(callback, "%P"))  # enables validation
+
+    customermobileLabel = Label(taz, text="Customer Mobile:", font=("Arial", 15, "bold"))
+    customermobileLabel.grid(row=5, column=1, padx=20, pady=5)
+
+    customermobileEntry = Entry(taz, textvariable=customermobileVar, bd=12)
+    customermobileEntry.grid(row=5, column=2, padx=20, pady=5)
+    customermobileEntry.configure(validate="key", validatecommand=(callback1, "%P"))  # enables validation
+
+    selectLabel = Label(taz, text="Select item:", font=("Arial", 15, "bold"))
+    selectLabel.grid(row=6, column=1, padx=20, pady=5)
+
+    l=combo_input()
+    c=ttk.Combobox(taz,values=l,textvariable=combovariable, font=("Arial", 15, "bold"))
+    c.set("select item")
+    combovariable.trace('w',optioncallback)
+    c.grid(row=6, column=2, padx=20, pady=5)
+
+    rateLabel = Label(taz, text="Item Rate:", font=("Arial", 15, "bold"))
+    rateLabel.grid(row=7, column=1, padx=20, pady=5)
+
+    rateEntry = Entry(taz, textvariable=baserate, bd=12)
+    rateEntry.grid(row=7, column=2, padx=20, pady=5)
+    rateEntry.configure(validate="key", validatecommand=(callback1, "%P"))  # enables
+
+    qtyLabel = Label(taz, text="Select Quantity:", font=("Arial", 15, "bold"))
+    qtyLabel.grid(row=8, column=1, padx=20, pady=5)
+
+
+    global qtyvariable
+
+    l2=[1,2,3,4,5]
+    qty = ttk.Combobox(taz, values=l2, textvariable=qtyvariable, font=("Arial", 15, "bold"))
+    qty.set("select Quantity")
+    qtyvariable.trace('w', optioncallback2)
+    qty.grid(row=8, column=2, padx=20, pady=5)
+
+    costLabel = Label(taz, text="Cost:", font=("Arial", 15, "bold"))
+    costLabel.grid(row=9, column=1, padx=20, pady=5)
+
+    costEntry = Entry(taz, textvariable=cost, bd=12)
+    costEntry.grid(row=9, column=2, padx=20, pady=5)
+
+
+    billButton=Button(taz,text="Save Bill",width=20,height=2,bd=10,fg="black",bg="powder blue",command=saveBill)
+    billButton.grid(row=10, column=2, padx=20, pady=5)
+
+    printButton = Button(taz, text="print Bill", width=20, height=2, bd=10, fg="black", bg="powder blue",command=printbill
+                        )
+    printButton.grid(row=10, column=1, padx=20, pady=5)
+
+
+
+################## saveBill ##########################
+def saveBill():
+    dt=datetimeVar.get()
+
+    customer=customernameVar.get()
+    mobile=customermobileVar.get()
+    item_name=itemname
+    itemrate=v
+    itemqty=qtyvariable.get()
+    total=cost.get()
+    print(dt,customer,mobile,item_name,itemrate,itemqty,total)
+    db_connect()
+    insqul="insert into bill(datetime,customer_name,customer_no,item_name,item_rate,item_qty,cost) values(%s,%s,%s,%s,%s,%s,%s)"
+
+
+    val=(dt,customer,mobile,item_name,itemrate,itemqty,total)
+    mycursor.execute(insqul,val)
+    con.commit()
+    messagebox.showinfo("save data","bill saved successfully")
+    customernameVar.set("")
+    customermobileVar.set("")
+    itemnameVar.set("")
+    cost.set("")
+
+####################  printbill ############################
+def printbill():
+    remove_all_widgets()
+    mainHeading()
+    printitem=Label(taz,text="Bill Details",font=("arial",25,"bold"))
+    printitem.grid(row=1, column=1, padx=(50, 0), columnspan=2, pady=10)
+
+    btnback = Button(taz, text="Back", font="Arial 15", bg="powder blue", fg="black", bd=10, command=back)
+    btnback.grid(row=1, column=0, padx=20, pady=5, columnspan=2)
+
+    btnLogout = Button(taz, text="Logout", font="Arial 15", bg="powder blue", fg="black", bd=10, command=adminLogout)
+    btnLogout.grid(row=1, column=2, padx=20, pady=5, columnspan=2)
+
+    clickbutton = Button(taz, text="Doube click to Treeview To Print Bill", font=("arial", 25, "bold"))
+    clickbutton.grid(row=2, column=1, padx=(50, 0), columnspan=2, pady=10)
+    #tree view
+    tazTV1.grid(row=5, column=0, columnspan=4)
+    scrollBar = Scrollbar(taz, orient="vertical", command=tazTV.yview)
+    scrollBar.grid(row=5, column=5, sticky="NSE")
+
+    tazTV1.configure(yscrollcommand=scrollBar.set)
+
+    tazTV1.heading('#0', text="Date/Time")
+    tazTV1.heading('#1', text="Name")
+    tazTV1.heading('#2', text="Mobile")
+    tazTV1.heading('#3', text="Selected food")
+    tazTV1.heading('#4', text="Total Cost")
+    displaybill()
+
+#################### displaybill ###################################
+def displaybill():
+    # to delete already inserted item
+    records = tazTV1.get_children()
+
+    for element in records:
+        tazTV.delete(element)
+
+    # insert data in treeview
+    conn = pymysql.connect(host="localhost", user="root", db="mpvit")
+    mycursor = conn.cursor(pymysql.cursors.DictCursor)
+    query = "select * from bill"
+    mycursor.execute(query)
+    data = mycursor.fetchall()
+    # print(data)
+    for row in data:
+        tazTV1.insert('', 'end', text=row['datetime'], values=(row["customer_name"],
+                                                               row["customer_no"],row["item_name"],row["cost"]))
+    conn.close()
+    tazTV1.bind("<Double-1>",OnDoubleClick2)
+
+##################    OnDoubleClick2  #############################
+#global itemNameVar11
+def OnDoubleClick2(event):
+    #print("hi")
+    global itemNameVar11
+    item = tazTV1.selection()
+    #global itemNameVar11
+    itemNameVar11 = tazTV1.item(item,"text")
+    item_detail1 = tazTV1.item(item,"values")
+    receipt()
+
+
+######################### receipt #############################
+def receipt():
+     billstring=""
+     billstring+="===========My Hotel Bill============\n\n"
+     billstring += "===========Customer Detail============\n\n"
+
+     db_connect()
+     query="select *from bill where datetime='{}';".format(itemNameVar11)
+     mycursor.execute(query)
+     data=mycursor.fetchall()
+     print(data)
+     for row in data:
+         billstring+="{}{:<20}{:<10}\n".format("date/time","",row[1])
+         billstring +="{}{:<20}{:<10}\n".format("Customer Name","", row[2])
+         billstring += "{}{:<20}{:<10}\n".format("Customer No","", row[3])
+         billstring += "\n============== Item Detail ===========\n"
+         billstring +="{:<10}{:<10}{:15}{:<15}".format("Item Name","Rate","Quantity","Total Cost")
+         billstring +="\n{:<10}{:<10}{:<25}{:<25}".format(row[4],row[5],row[6],row[7])
+         billstring +="========================================================\n"
+         billstring +="{}{:<10}{:<15}{:<10}\n".format("total Cost","","",row[7])
+         billstring +="\n\n========= Thanks Plesse Visit Again==============\n"
+
+     bilfile=filedialog.asksaveasfile(mode="w",defaultextension=".txt")
+     if bilfile is None:
+         messagebox.showerror("file Name Error","Invalid File Name")
+     else:
+         bilfile.write(billstring)
+         bilfile.close()
+
+
+
+
+
+
+
+
+###################  ADD ITEM WINDOW ######################
+itemnameVar =StringVar()
+itemrateVar = StringVar()
+itemTypeVar = StringVar()
+def additemwindow():
+     remove_all_widgets()
+     mainHeading()
+
+     btnback = Button(taz, text="Back", font="Arial 15", bg="powder blue", fg="black", bd=10,command=back)
+     btnback.grid(row=1, column=0, padx=20, pady=5, columnspan=2)
+
+     windowItemdetail = Label(taz, text="ITEM DETAIL", font="Arial 20")
+     windowItemdetail.grid(row=1, column=1, padx=(50, 0), columnspan=2, pady=10)
+
+     btnLogout = Button(taz, text="Logout", font="Arial 15", bg="powder blue", fg="black", bd=10, command=adminLogout)
+     btnLogout.grid(row=1, column=2, padx=20, pady=5, columnspan=2)
+
+     item_name = Label(taz,text="Item Name:", font="Arial 15")
+     item_name.grid(row=2, column=1)
+
+     itemNameEntry = Entry(taz, font="Arial 15" ,bd=10,textvariable=itemnameVar)
+     itemNameEntry.grid(row=2, column=2, padx=20, pady=5)
+     itemNameEntry.configure(validate="key", validatecommand=(callback, "%P"))  # enables validation
+
+     itemRatelabel = Label(taz, text="Item Rate:", font="Arial 15")
+     itemRatelabel.grid(row=3, column=1)
+
+
+     itemRateEntry = Entry(taz, font="Arial 15", bd=10,textvariable=itemrateVar)
+     itemRateEntry.grid(row=3, column=2, padx=20, pady=5)
+     itemRateEntry.configure(validate="key", validatecommand=(callback1, "%P"))  # enables validation
+
+     item_Type = Label(taz, text="Item Type:", font="Arial 15")
+     item_Type.grid(row=4, column=1)
+
+     itemTypeEntry = Entry(taz, font="Arial 15", bd=10,textvariable=itemTypeVar)
+     itemTypeEntry.grid(row=4, column=2, padx=20, pady=5)
+     itemTypeEntry.configure(validate="key", validatecommand=(callback, "%P"))  # enables validation
+
+
+     btnUpdate = Button(taz, text="Update Item", font="Arial 15", bg="powder blue", fg="black", bd=10,command=updateItem )
+     btnUpdate.grid(row=6, column=1, padx=20, pady=5 )
+
+
+     btnInsert = Button(taz, text="Insert Item", font="Arial 15", bg="powder blue", fg="black", bd=10,command=insertItem)
+     btnInsert.grid(row=6, column=1, padx=20, pady=5,columnspan=2)
+
+
+     btnDelete = Button(taz, text="Delete Item", font="Arial 15", bg="powder blue", fg="black", bd=10, command=deleteItem)
+     btnDelete.grid(row=6, column=2, padx=20, pady=5, columnspan=2)
+
+     ################# to display treeview ##############################
+     tazTV.grid(row=7, column=0, columnspan=4)
+     scrollBar = Scrollbar(taz, orient="vertical", command=tazTV.yview)
+     scrollBar.grid(row=7, column=4, sticky="NSE")
+
+     tazTV.configure(yscrollcommand=scrollBar.set)
+
+     tazTV.heading('#0', text="Item Name")
+     tazTV.heading('#1', text="Rate")
+     tazTV.heading('#2', text="Type")
+
+     # get data in treeview
+     getIteminTreeView()
+     tazTV.bind("<Double-1>", OnDoubleClick)
+
+
+
+
+
+################log out###############
+def adminLogout():
+    remove_all_widgets()
+    adminLogin()
+
+########### welcome window #########################
+def welcomewindow():
+    remove_all_widgets()
+    mainHeading()
+    windowLabel = Label(taz, text="Welcome User", font="Arial 20")
+    windowLabel.grid(row=1, column=1, padx=(50, 0), columnspan=2, pady=10)
+
+    btnLogout = Button(taz, text="Manage Restaurant", font="Arial 15", bg="powder blue", fg="black" ,bd=10,command=additemwindow)
+    btnLogout.grid(row=2, column=0, padx=20, pady=5, columnspan=2)
+
+    btnLogout = Button(taz, text="Bill Generation", font="Arial 15", bg="powder blue", fg="black" ,bd=10,command=billwindow)
+    btnLogout.grid(row=2, column=1, padx=20, pady=5, columnspan=2)
+
+    btnLogout = Button(taz, text="Logout", font="Arial 15", bg="powder blue", fg="black" ,bd=10,command=adminLogout)
+    btnLogout.grid(row=2, column=2, padx=20, pady=5, columnspan=2)
+
+
+############### ADMIN LOGIN PROCESS#################
+
+def adminLoginProcess():
+    if usernameVar.get()=='' or passwordVar.get()=='':
+       messagebox.showerror(title="Login Error",message="Please Fill User Name and Password")
+    else:
+        db_connect()
+        # print(usernameVar.get())
+        # print(passwordVar.get())
+        username = usernameVar.get().strip()
+        password = passwordVar.get().strip()
+        que = "select * from tazhotel where binary username=%s and binary password=%s"
+        val = (username, password)
+        mycursor.execute(que, val)
+        data = mycursor.fetchall()
+        flag = False
+        for row in data:
+            flag = True
+
+        con.close()
+        if flag == True:
+            welcomewindow()
+
+
+        else:
+            messagebox.showerror(title="Login Error", message="Either USerName or Password is Incorrect")
+            usernameVar.set('')
+            passwordVar.set('')
+
+
+############################ MAIN LEVEL  ###########################################
+def mainHeading():
+    head = Label(taz, text="                            TAZ HOTEL MANAGEMENT SYSTEM                                       ", bg='red',
+                 fg='black', font=("Comic Sans Ms", 25, 'bold'),
+                 padx=20, pady=20)
+    head.grid(row=0, column=0, columnspan=4)
+############################## ADMIN LOGIN   #############################################
+usernameVar=StringVar()
+passwordVar=StringVar()
+def adminLogin():
+    mainHeading()
+    admin_login=Label(taz,text="Admin Login",font=("arial,20"))
+    admin_login.grid(row=1,column=0,columnspan=4)
+
+    usernameLabel = Label(taz, text="Username", font="Arial 15")
+    usernameLabel.grid(row=2, column=1, padx=20, pady=5)
+
+
+    userNameEntry = Entry(taz, font="Arial 15", textvariable=usernameVar,bd=10)
+    userNameEntry.grid(row=2, column=2, padx=20, pady=5)
+
+    passwordLabel = Label(taz, text="Password", font="Arial 15")
+    passwordLabel.grid(row=3, column=1, padx=20, pady=5)
+
+
+    passwordEntry = Entry(taz, font="Arial 15", show="*", textvariable=passwordVar,bd=10)
+    passwordEntry.grid(row=3, column=2, padx=20, pady=5)
+
+    btnLogin = Button(taz, text="Login", font="Arial 15", bg="powder blue",bd=10, fg="black", command=adminLoginProcess)
+    btnLogin.grid(row=4, column=1, padx=20, pady=5, columnspan=2)
+
+adminLogin()
+
+taz.mainloop()
